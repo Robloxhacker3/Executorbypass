@@ -23,6 +23,29 @@ def decode_base64_url(base64_url: str) -> str:
     decoded_bytes = base64.urlsafe_b64decode(base64_url)
     return decoded_bytes.decode("utf-8")
 
+# Function to handle LootLink URL and bypass its redirection
+def lootlink_bypass(lootlink_url: str) -> str:
+    try:
+        # Check if the LootLink URL contains the base64 encoded part
+        match = re.search(r"r=([^&]+)", lootlink_url)
+        if match:
+            base64_part = match.group(1)
+            
+            # Check if it's a valid base64 string
+            if is_base64(base64_part):
+                # Decode the base64 URL part
+                decoded_url = decode_base64_url(base64_part)
+
+                # Optionally, you can extract more details from the decoded URL
+                # Here we assume it will be a redirect link or API token
+                return decoded_url
+            else:
+                return "Invalid LootLink base64 data."
+        else:
+            return "LootLink URL format not valid."
+    except Exception as e:
+        return f"An error occurred during LootLink bypass: {str(e)}"
+
 # Function to get the delta key using HWID
 def get_delta_key(hwid: str):
     # Check if the HWID starts with the Platoboost URL and remove it if present
@@ -55,17 +78,21 @@ def get_delta_key(hwid: str):
         encoded_redirect_url = response_json.get('redirect')
         
         if encoded_redirect_url:
-            # Decode the base64 URL encoded redirect URL
-            unquoted_url = unquote(encoded_redirect_url)
+            # Apply LootLink Bypass if the redirect URL is from LootLink
+            decoded_redirect_url = lootlink_bypass(encoded_redirect_url)
             
-            # Extract the base64 encoded part from the URL
+            if decoded_redirect_url.startswith('http'):
+                # Perform further actions with the decoded URL
+                print(f"Redirected to: {decoded_redirect_url}")
+            
+            # Now proceed with extracting the token as before
+            unquoted_url = unquote(decoded_redirect_url)
             pattern = r"r=([^&]+)"
             match = re.search(pattern, unquoted_url)
             if match:
                 encoded_url = match.group(1)
                 
                 if is_base64(encoded_url):
-                    # Base64 decode the string
                     decoded_url = decode_base64_url(encoded_url)
 
                     # Extract the API token from the decoded URL
